@@ -1,13 +1,14 @@
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import FewShotPromptTemplate, PromptTemplate
 from langchain.chains import LLMChain
-
-# 🔑 Setup your OpenAI API key
+from dotenv import load_dotenv
 import os
-os.environ["OPENAI_API_KEY"] = "your-openai-api-key"
 
-# 🧠 Few-shot examples
-examples = [
+load_dotenv()
+# Assumes .env file contains a line: OPENAI_API_KEY=your-openai-api-key
+# No need to set os.environ manually; ChatOpenAI will pick it up from the environment
+
+few_shot_examples = [
     {
         "text": "Subject: Urgent complaint about order #12987\nI received the wrong item...",
         "format": "Email",
@@ -44,15 +45,14 @@ prefix = "Classify the given text into Format and Intent.\nChoose Format from [J
 suffix = "Text: {input_text}\nFormat:"
 
 few_shot_prompt = FewShotPromptTemplate(
-    examples=examples,
+    examples=few_shot_examples,
     example_prompt=example_prompt,
-    prefix=prefix,
+    prefix=prefix, 
     suffix=suffix,
     input_variables=["input_text"]
 )
 
-llm = ChatOpenAI(temperature=0, model_name="gpt-4")  # or gpt-3.5-turbo
-
+llm = ChatOpenAI(temperature=0.2, model_name="gpt-4")  
 chain = LLMChain(llm=llm, prompt=few_shot_prompt)
 
 input_text = "Subject: Request for Quotation\nWe would like to receive a price estimate for 500 units of..."

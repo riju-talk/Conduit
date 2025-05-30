@@ -4,21 +4,28 @@ import os
 
 app = FastAPI(title="Conduit")
 
-@app.post("/process")
-async def process_input(file: UploadFile = File(None), text: str = Form(None)):
-    """Process input file or text and return extracted data."""
-    if file:
-        file_path = f"temp_{file.filename}"
-        with open(file_path, "wb") as f:
-            f.write(await file.read())
-        input_id, extracted_fields = classifier_agent(None, file_path=file_path)
-        os.remove(file_path)  # Clean up temporary file
-    elif text:
-        input_id, extracted_fields = classifier_agent(text)
-    else:
-        return {"error": "No input provided"}
 
-    return {"input_id": input_id, "extracted_fields": extracted_fields}
+
+@app.lifespan("startup")
+
+
+
+@app.lifespan("shutdown")
+
+
+@app.get("/")
+async def running_message():
+    #returning a message to indicate the service is running
+    return {"message": "Conduit service is running; ready to process files and text inputs."}
+
+@app.post("/upload")
+
+
+@app.post("/crm")
+
+
+@app.post("/risk_alert")
+
 
 if __name__ == "__main__":
     import uvicorn
