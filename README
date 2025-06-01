@@ -1,0 +1,58 @@
+#Conduit: AI-Powered Multi-Format Intake Agent
+
+##Welcome to FluxConduit—a cutting-edge AI system that tames the chaos of diverse data inputs into structured insights. PDFs, JSONs, emails? No problem! FluxConduit classifies, routes, and extracts key information, storing context in Redis for seamless processing.
+
+🌟 Features
+Multi-Format Processing: Handles PDFs, JSONs, and emails with ease.
+
+
+
+Intelligent Routing: Classifies inputs and sends them to specialized agents.
+
+
+
+Data Extraction: Pulls out key fields tailored to intent (e.g., Invoice, RFQ).
+
+
+
+Context Memory: Persists data in Redis for fast access and auditing.
+
+
+
+Scalable Design: Powered by FastAPI and Docker.
+
+.
+
+🛠️ Tech Stack
+
+
+
+
+
+Python: Drives the agents and utilities.
+
+
+
+FastAPI: High-performance API for input processing.
+
+
+
+Redis: Fast, persistent shared memory.
+
+
+
+Docker: Ensures consistent deployment.
+
+🚀 Quick Start
+
+Prerequisites
+
+
+
+
+
+Docker & Docker Compose
+
+
+
+Git
