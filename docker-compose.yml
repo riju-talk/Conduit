@@ -1,6 +1,6 @@
-version: "3"
+version: '3.8'
 services:
-  my-redis-docker-service:
+  redis:
     image: redis:latest
     healthcheck:
       test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
@@ -8,16 +8,21 @@ services:
       timeout: 3s
       retries: 5
     command: ["redis-server"]
+    ports:
+      - "6379:6379"  # Expose Redis port for debugging (optional)
 
   app:
     depends_on:
-      my-redis-docker-service:
+      redis:
         condition: service_healthy
     build:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "8000:8000"  # FastAPI port
+    environment:
+      - REDIS_HOST=redis
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
-      - .:/app
-    command: yarn dev
+      - ./data:/app/data  # Mount data directory for sample inputs
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,58 +1,191 @@
-#Conduit: AI-Powered Multi-Format Intake Agent
+# 🌌 Conduit: The Cosmic Data Orchestrator
 
-##Welcome to FluxConduit—a cutting-edge AI system that tames the chaos of diverse data inputs into structured insights. PDFs, JSONs, emails? No problem! FluxConduit classifies, routes, and extracts key information, storing context in Redis for seamless processing.
+Welcome to **Conduit**, a stellar AI-powered system that transforms chaotic data streams—PDFs, JSONs, and emails—into structured, actionable insights. Powered by **LangChain**, **FastAPI**, **Redis**, and **Docker**, it classifies intents (Invoice, RFQ, Complaint, Regulation), routes them to specialized agents, and preserves context in a cosmic memory vault. Buckle up for a journey through data galaxies! 🚀
 
-🌟 Features
-Multi-Format Processing: Handles PDFs, JSONs, and emails with ease.
+## 🌟 Mission
+Conduit tackles diverse inputs with finesse, intelligently classifying their intent, extracting key fields, and storing context for seamless processing. Whether it’s an invoice PDF, a JSON RFQ, or an urgent email complaint, Conduit ensures precision and scalability.
 
+## 🛠️ Tech Stack
+- **Python**: The backbone for scripting agents and utilities.
+- **LangChain**: Orchestrates LLM-driven intent classification and field extraction.
+- **FastAPI**: High-performance API for lightning-fast input processing.
+- **Redis**: Persistent, warp-speed shared memory for context retention.
+- **Docker**: Encapsulates the system for consistent, intergalactic deployment.
 
+## 🎇 Features
+- **Intent Classification**: Identifies inputs as Invoice, RFQ, Complaint, or Regulation using AI.
+- **Multi-Format Processing**: Handles PDFs, JSONs, and emails with ease.
+- **Smart Routing**: Directs inputs to specialized agents based on intent.
+- **Data Extraction**: Pulls out intent-specific fields (e.g., invoice number, customer name).
+- **Context Memory**: Stores metadata and results in Redis for auditing and chaining.
+- **Scalable Deployment**: Runs in Docker for portability and reliability.
 
-Intelligent Routing: Classifies inputs and sends them to specialized agents.
+## 🚀 Flow of Operations
+Conduit’s workflow is a cosmic dance of data processing:
 
+1. **Input Arrival**: A user submits a PDF, JSON, or email via FastAPI’s `/process` endpoint.
+2. **Classifier Agent**: Analyzes the input, determines its format (PDF, JSON, Email) and intent (Invoice, RFQ, Complaint, Regulation) using LangChain and an LLM (e.g., OpenAI’s GPT).
+3. **Routing**: Directs the input to the appropriate agent:
+   - JSON → **JSON Agent**
+   - PDF/Email → **Email Parser Agent**
+4. **Data Extraction**: The chosen agent extracts intent-specific fields (e.g., invoice number for Invoice, issue for Complaint) using LangChain prompts.
+5. **Memory Storage**: Metadata (format, intent, timestamp) and extracted fields are stored in Redis for context retention.
+6. **Output Delivery**: FastAPI returns the input ID and extracted fields, ready for downstream use.
 
+## 🧠 Module Breakdown
+Each module is a star in the Conduit constellation, working together to process data with precision.
 
-Data Extraction: Pulls out key fields tailored to intent (e.g., Invoice, RFQ).
+### 📡 Classifier Agent (`agents/classifier.py`)
+- **Role**: The mission control, identifying input format and intent, and routing to the correct agent.
+- **How It Works**:
+  - Detects format: Checks file extensions for PDFs, validates JSON, or assumes Email for text.
+  - Classifies intent: Uses LangChain’s `LLMChain` with a prompt like:
+    ```
+    Classify the intent of this document: {text}
+    Possible intents: Invoice, RFQ, Complaint, Regulation
+    ```
+  - Routes to JSON Agent (for JSON) or Email Parser Agent (for PDF/Email).
+  - Stores metadata (format, intent, timestamp) in Redis.
+- **Why It’s Cool**: Acts as the brain, leveraging AI to make smart routing decisions.
 
+### 📊 JSON Agent (`agents/json_agent.py`)
+- **Role**: Extracts fields from JSON inputs based on intent-specific schemas.
+- **How It Works**:
+  - Parses JSON and selects a schema based on intent (e.g., `["invoice_number", "date"]` for Invoice).
+  - Maps JSON keys to schema fields, marking missing fields as `None`.
+  - Example: For an RFQ JSON `{"requested_items": ["item1"], "deadline": "2023-12-01"}`, extracts those fields.
+- **Why It’s Cool**: Handles structured data with precision, ensuring no field is left behind.
 
+### ✉️ Email Parser Agent (`agents/email_parser.py`)
+- **Role**: Extracts fields from unstructured text (PDFs or emails) using AI.
+- **How It Works**:
+  - Uses LangChain’s `LLMChain` to extract intent-specific fields (e.g., `issue` for Complaint).
+  - For emails, extracts additional fields like `sender` and `urgency` with prompts like:
+    ```
+    Extract the sender name from this text: {text}
+    ```
+  - Example: From "Hi, I’m John. Defective product!", extracts `{"customer_name": "John", "issue": "Defective product"}`.
+- **Why It’s Cool**: Tames unstructured text with AI, turning chaos into structured CRM records.
 
-Context Memory: Persists data in Redis for fast access and auditing.
+### 🗄️ Shared Memory (`memory.py`)
+- **Role**: The cosmic vault, storing context across agents.
+- **How It Works**:
+  - Uses Redis to store input metadata (format, intent, timestamp) and extracted fields under a unique `input_id`.
+  - Example Redis entry: `{"metadata": {"type": "PDF", "intent": "Invoice"}, "extracted_fields": {"invoice_number": "123"}}`.
+  - Accessible by all agents for auditing or chaining.
+- **Why It’s Cool**: Redis ensures fast, persistent storage, enabling scalability and context retention.
 
+### 🌐 FastAPI (`main.py`)
+- **Role**: The galactic gateway, accepting inputs and delivering results.
+- **How It Works**:
+  - Exposes a `/process` endpoint to handle file uploads (PDFs, JSONs) or text inputs (emails).
+  - Calls the Classifier Agent and returns the input ID and extracted fields.
+  - Example: `curl -X POST -F "file=@sample_invoice.pdf" http://localhost:8000/process`.
+- **Why It’s Cool**: FastAPI’s async capabilities make it lightning-fast and production-ready.
 
+### 🐳 Docker (`Dockerfile`, `docker-compose.yml`)
+- **Role**: The spaceship, ensuring consistent deployment across galaxies.
+- **How It Works**:
+  - `Dockerfile`: Builds a Python environment with dependencies.
+  - `docker-compose.yml`: Runs FastAPI and Redis containers, linking them seamlessly.
+- **Why It’s Cool**: Guarantees portability and eliminates "it works on my machine" issues.
 
-Scalable Design: Powered by FastAPI and Docker.
+## 📂 Project Structure
+```
+Conduit/
+├── agents/                # Agent logic
+│   ├── classifier.py      # Intent classification and routing
+│   ├── json_agent.py      # JSON processing
+│   └── email_parser.py    # Text extraction
+├── data/                  # Sample inputs
+│   ├── sample_invoice.pdf
+│   ├── sample_rfq.json
+│   └── sample_email.txt
+├── main.py                # FastAPI application
+├── memory.py              # Redis-based memory
+├── utils.py               # Utility functions
+├── Dockerfile             # Docker image configuration
+├── docker-compose.yml     # Docker services
+├── requirements.txt       # Dependencies
+├── .env                   # Environment variables
+└── README.md              # This file
+```
 
-.
+## 🚀 Quick Start
+### Prerequisites
+- Docker & Docker Compose
+- Git
+- OpenAI API key
 
-🛠️ Tech Stack
+### Setup
+1. Clone the repo:
+   ```bash
+   git clone https://github.com/your-username/Conduit.git
+   cd Conduit
+   ```
+2. Create a `.env` file:
+   ```
+   OPENAI_API_KEY=your-api-key
+   REDIS_HOST=redis
+   ```
+3. Build and run:
+   ```bash
+   docker-compose up --build
+   ```
 
+### Usage
+- **Process a File**:
+  ```bash
+  curl -X POST -F "file=@data/sample_invoice.pdf" http://localhost:8000/process
+  ```
+- **Process Text**:
+  ```bash
+  curl -X POST -F "text=From: John Doe\nHi, I have an issue." http://localhost:8000/process
+  ```
 
+## 📊 Sample Outputs
+For `sample_invoice.pdf` (Invoice):
+```json
+{
+  "input_id": "123e4567-e89b-12d3-a456-426614174000",
+  "extracted_fields": {
+    "invoice_number": "123",
+    "date": "2023-10-01",
+    "total": "$500",
+    "items": "[item1, item2]"
+  }
+}
+```
 
+For `sample_email.txt` (Complaint):
+```json
+{
+  "input_id": "456e7890-f12c-34d5-a678-901234567890",
+  "extracted_fields": {
+    "customer_name": "John Doe",
+    "issue": "defective product",
+    "sender": "John Doe",
+    "urgency": "high"
+  }
+}
+```
 
+## 🧠 High-Level Implementation
+Conduit is a modular, AI-driven system:
+- **Input Handling**: FastAPI accepts files or text, ensuring flexibility.
+- **Intent Classification**: LangChain and LLMs (e.g., OpenAI) classify inputs into Invoice, RFQ, Complaint, or Regulation.
+- **Agent Specialization**: JSON Agent for structured data, Email Parser for unstructured text, both using intent-specific schemas.
+- **Context Persistence**: Redis stores metadata and results, enabling auditing and multi-step processing.
+- **Deployment**: Docker ensures seamless, reproducible execution.
+- **Scalability**: FastAPI’s async nature and Redis’s performance make it production-ready.
 
-Python: Drives the agents and utilities.
+## 🎥 Demo
+[Watch the cosmic demo](#) (upload to YouTube/Google Drive) to see Conduit classify intents, extract fields, and store context in action!
 
+## 🤝 Contributing
+Join the mission! Fork the repo, create a feature branch, and submit a PR to enhance the data cosmos.
 
+## 📄 License
+MIT License—see `LICENSE` for details.
 
-FastAPI: High-performance API for input processing.
-
-
-
-Redis: Fast, persistent shared memory.
-
-
-
-Docker: Ensures consistent deployment.
-
-🚀 Quick Start
-
-Prerequisites
-
-
-
-
-
-Docker & Docker Compose
-
-
-
-Git
+🌌 **Conduit**: Where data meets destiny.
