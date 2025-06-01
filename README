@@ -120,7 +120,7 @@ Conduit/
 ### Setup
 1. Clone the repo:
    ```bash
-   git clone https://github.com/your-username/Conduit.git
+   git clone https://github.com/riju-talk/Conduit.git
    cd Conduit
    ```
 2. Create a `.env` file:
