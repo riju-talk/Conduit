@@ -19,7 +19,6 @@ class JSONAgent:
         self.shared_memory = shared_memory
         self.logger = logging.getLogger(__name__)
 
-        # Only the schemas your project currently needs—others can be added similarly.
         self.schemas = {
             "rfq": {
                 "type": "object",
@@ -85,7 +84,6 @@ class JSONAgent:
         5) Return a standardized dict and log to shared_memory
         """
         try:
-            # 1) Parse JSON
             if isinstance(json_data, (bytes, bytearray)):
                 text = json_data.decode("utf-8")
                 parsed = json.loads(text)
@@ -97,7 +95,7 @@ class JSONAgent:
             intent = metadata.get("intent", "webhook").lower()
             source_id = metadata.get("source_id", f"json_{datetime.now().timestamp()}")
 
-            # 2) Validate against schema (if available)
+
             schema = self.schemas.get(intent)
             validation = {"is_valid": False, "errors": []}
             if schema:
@@ -110,7 +108,6 @@ class JSONAgent:
                 # No schema defined for this intent
                 validation["errors"].append(f"No schema for intent '{intent}'")
 
-            # 3) Simple anomaly detection
             anomalies: List[Dict[str, Any]] = []
             if intent == "rfq" and isinstance(parsed, dict):
                 budget = parsed.get("budget_range", 0)
@@ -130,7 +127,6 @@ class JSONAgent:
                 if isinstance(risk, (int, float)) and risk > 70:
                     anomalies.append({"type": "high_risk_score", "value": risk, "severity": "critical"})
 
-            # 4) Extract key fields (simple subset)
             extracted_fields = {}
             try:
                 if intent == "rfq":
@@ -156,7 +152,6 @@ class JSONAgent:
             except Exception as e:
                 self.logger.error(f"Error extracting key fields: {e}")
 
-            # 5) Decide action
             if anomalies:
                 top_severity = max(a["severity"] for a in anomalies if "severity" in a)
                 if top_severity in ("critical", "high"):
@@ -168,7 +163,6 @@ class JSONAgent:
             else:
                 action = {"action": "process_normally", "target": f"{intent}_handler", "reason": "Valid data"}
 
-            # Build response
             response = {
                 "source": "json_agent",
                 "source_id": source_id,
@@ -182,7 +176,7 @@ class JSONAgent:
                 "status": "success"
             }
 
-            # 6) Log a summary into shared_memory if available
+
             if self.shared_memory:
                 try:
                     summary = {

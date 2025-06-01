@@ -179,9 +179,6 @@ Conduit is a modular, AI-driven system:
 - **Deployment**: Docker ensures seamless, reproducible execution.
 - **Scalability**: FastAPI’s async nature and Redis’s performance make it production-ready.
 
-## 🎥 Demo
-[Watch the cosmic demo](#) (upload to YouTube/Google Drive) to see Conduit classify intents, extract fields, and store context in action!
-
 ## 🤝 Contributing
 Join the mission! Fork the repo, create a feature branch, and submit a PR to enhance the data cosmos.
 

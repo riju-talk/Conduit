@@ -21,11 +21,9 @@ class EmailAgent:
     """
 
     def __init__(self, temperature: float = 0.0):
-        # Instantiate ChatOpenAI for tone classification
         model_name = os.getenv("GROQ_MODEL")
         self.llm = ChatGroq(model_name=model_name, temperature=temperature)
 
-        # Tone classification prompt
         tone_prompt = PromptTemplate(
             input_variables=["email_body"],
             template=(
@@ -36,7 +34,6 @@ class EmailAgent:
         )
         self.tone_chain = LLMChain(llm=self.llm, prompt=tone_prompt)
 
-        # Define urgency keywords
         self.urgent_keywords = ["urgent", "asap", "immediately", "as soon as possible"]
 
     def process(self, raw_bytes: bytes, metadata: Dict[str, Any]) -> dict:
@@ -48,13 +45,11 @@ class EmailAgent:
         5) Return:
             {"source":"email_agent", "data":{...}, "action_suggestion":{...}}
         """
-        # 1) Parse email
         msg = message_from_bytes(raw_bytes)
         sender = msg.get("From", "")
         subject = msg.get("Subject", "")
         in_reply_to = msg.get("In-Reply-To", None)
 
-        # 2) Extract plain‑text body
         body = ""
         if msg.is_multipart():
             for part in msg.walk():
@@ -67,7 +62,6 @@ class EmailAgent:
             except Exception:
                 body = str(msg.get_payload())
 
-        # 3) Compute fields
         body_summary = self._summarize_body(body)
         urgency = self._get_urgency(subject, body)
         tone    = self._get_tone(body)
@@ -82,7 +76,6 @@ class EmailAgent:
             "thread_id":    thread_id
         }
 
-        # 4) Decide action
         if urgency == "high" or tone == "angry":
             action_suggestion = {"action": "escalate", "target": "crm"}
         else:
@@ -95,15 +88,9 @@ class EmailAgent:
         }
 
     def _summarize_body(self, body: str) -> str:
-        """
-        For simplicity, just return the first 200 characters.
-        """
         return body.strip()[:200]
 
     def _get_urgency(self, subject: str, body: str) -> str:
-        """
-        If any urgent keyword appears in subject or body → "high", else "normal".
-        """
         text = (subject + " " + body).lower()
         for kw in self.urgent_keywords:
             if kw in text:
@@ -114,7 +101,6 @@ class EmailAgent:
         if not body.strip():
             return "polite"
 
-        # Truncate to first 1000 chars to avoid very long prompts
         truncated = body[:1000]
         llm_response = self.tone_chain.run(email_body=truncated).strip().lower()
 

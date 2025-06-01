@@ -9,7 +9,7 @@ services:
       retries: 5
     command: ["redis-server"]
     ports:
-      - "6379:6379"  # Expose Redis port for debugging (optional)
+      - "6379:6379"  # Expose for debugging (optional)
 
   app:
     depends_on:
@@ -21,8 +21,9 @@ services:
     ports:
       - "8000:8000"  # FastAPI port
     environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GROQ_MODEL=${GROQ_MODEL}
       - REDIS_HOST=redis
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
-      - ./data:/app/data  # Mount data directory for sample inputs
-    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+      - ./data:/app/data 
+    command: ["uvicorn", "mcp.main:app", "--host", "0.0.0.0", "--port", "8000"]

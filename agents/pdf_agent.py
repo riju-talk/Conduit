@@ -27,7 +27,6 @@ class PDFAgent:
         self.shared_memory = shared_memory
         self.logger = logging.getLogger(__name__)
         
-        # Initialize Groq LLM
         try:
             self.llm = ChatGroq(
                 model=os.getenv("GROQ_MODEL", "llama3-8b-8192"),
@@ -38,7 +37,6 @@ class PDFAgent:
             self.logger.error(f"Failed to initialize Groq LLM: {e}")
             raise
 
-        # Enhanced prompt templates for different intents
         self.prompts = {
             "invoice": PromptTemplate(
                 input_variables=["text"],
@@ -155,7 +153,6 @@ class PDFAgent:
             return self._create_error_response(str(e), metadata.get("source_id", "unknown"))
 
     def _extract_text_from_bytes(self, raw_bytes: bytes) -> str:
-        """Extract text from PDF bytes using PyPDF2"""
         try:
             pdf_stream = BytesIO(raw_bytes)
             reader = PdfReader(pdf_stream)
@@ -177,7 +174,6 @@ class PDFAgent:
             raise Exception(f"Failed to extract text from PDF: {e}")
 
     def _process_by_intent(self, text: str, intent: str) -> Dict[str, Any]:
-        """Process text based on business intent using appropriate LLM prompt"""
         try:
             # Select appropriate prompt
             prompt_template = self.prompts.get(intent, self.prompts["general"])
@@ -208,7 +204,6 @@ class PDFAgent:
             }
 
     def _extract_json_from_response(self, response: str) -> Dict[str, Any]:
-        """Extract and parse JSON from LLM response"""
         try:
             # Try direct JSON parsing first
             return json.loads(response)
@@ -226,7 +221,6 @@ class PDFAgent:
             return None
 
     def _determine_action(self, data: Dict[str, Any], intent: str) -> Dict[str, str]:
-        """Determine what action should be taken based on extracted data"""
         default_action = {"action": "archive", "target": "database"}
         
         try:
