@@ -20,41 +20,40 @@ class ClassifierAgent:
             raise ValueError("GROQ_API_KEY and GROQ_MODEL must be set in .env")
 
         self.llm = ChatGroq(api_key=groq_key, model=groq_model, temperature=temperature)
-        self.max_snippet_chars = 4096  # Increased to capture more context
+        self.max_snippet_chars = 4096  # Increased for more context
 
-        # Semantic keyword clusters for each intent
+        # Semantic keyword clusters with weights
         self.intent_keywords = {
             "Invoice": [
-                r"\b(tax\s*invoice|invoice|bill\s*of\s*supply|cash\s*memo)\b",
-                r"\b(total|subtotal|due\s*date|payment|order\s*number|amount)\b",
-                r"\b(\$|₹)?\s*\d+[.,]\d+\b"  # Monetary values
+                (r"\b(tax\s*invoice|invoice|bill\s*of\s*supply|cash\s*memo)\b", 2),  # High weight for explicit terms
+                (r"\b(total|subtotal|due\s*date|payment|order\s*number|amount|invoice\s*number)\b", 1),
+                (r"\b(\$|₹)?\s*\d+[.,]\d+\b", 1),  # Monetary values
             ],
             "RFQ": [
-                r"\b(quote|request|quantity|product|pricing|specification)\b",
-                r"\b(inquiry|procurement|order\s*request)\b"
+                (r"\b(quote|request|quantity|product|pricing|specification)\b", 1),
+                (r"\b(inquiry|procurement|order\s*request)\b", 1),
             ],
             "Complaint": [
-                r"\b(complaint|defective|issue|problem|replace|refund)\b",
-                r"\b(customer|support|service)\b"
+                (r"\b(complaint|defective|issue|problem|replace|refund)\b", 1),
+                (r"\b(customer|support|service)\b", 1),
             ],
             "Regulation": [
-                r"\b(section|act|regulation|compliance|policy|law)\b",
-                r"\b(legal|authority|standard)\b"
+                (r"\b(section|act|regulation|compliance|policy|law)\b", 1),
+                (r"\b(legal|authority|standard)\b", 1),
             ],
             "Fraud Risk": [
-                r"\b(fraud|suspicious|mismatch|investigate|discrepancy)\b",
-                r"\b(risk|alert|warning)\b"
+                (r"\b(fraud|suspicious|mismatch|investigate|discrepancy)\b", 1),
+                (r"\b(risk|alert|warning)\b", 1),
             ],
-            "Unknown": []  # No specific keywords; default if others don't match
+            "Unknown": [],
         }
 
-        # Precompile regex patterns
         self.intent_patterns = {
-            intent: [re.compile(pattern, re.IGNORECASE) for pattern in patterns]
+            intent: [(re.compile(pattern, re.IGNORECASE), weight) for pattern, weight in patterns]
             for intent, patterns in self.intent_keywords.items()
         }
 
-        # Few-shot examples with semantic emphasis
+        # Few-shot examples with semantic context
         few_shot_examples = [
             {
                 "format": "Email",
@@ -70,9 +69,9 @@ class ClassifierAgent:
             },
             {
                 "format": "PDF",
-                "text": "Tax Invoice/Bill of Supply Order Number: 407-0648430-7690762 Total: ₹1,699.00 Seller: CLICKTECH RETAIL PRIVATE LIMITED",
+                "text": "Tax Invoice/Bill of Supply Order Number: 407-0648430-7690762 Invoice Number: DED4-3622 Total: ₹1,699.00 Seller: CLICKTECH RETAIL PRIVATE LIMITED",
                 "intent": "Invoice",
-                "context": "Contains 'Tax Invoice,' 'Order Number,' and monetary value indicating a billing document."
+                "context": "Contains 'Tax Invoice,' 'Invoice Number,' 'Total,' and monetary value in a billing context."
             },
             {
                 "format": "PDF",
@@ -97,7 +96,7 @@ class ClassifierAgent:
                 "text": "Attention is all you need.",
                 "intent": "Unknown",
                 "context": "Lacks specific intent-related keywords or clear business context."
-            }
+            },
         ]
 
         example_prompt = PromptTemplate(
@@ -108,9 +107,9 @@ class ClassifierAgent:
 
         prefix = (
             "You are a classifier tasked with determining the business intent of a file based on its format and content. "
-            "Analyze the semantic context of keywords (e.g., financial terms for invoices, legal terms for regulations) "
-            "and choose exactly one intent from [RFQ, Complaint, Invoice, Regulation, Fraud Risk, Unknown]. "
-            "Consider the meaning and role of keywords in the text, not just their presence.\n\n"
+            "Analyze the semantic context of keywords (e.g., financial terms like 'invoice' and 'total' for invoices, "
+            "legal terms like 'act' for regulations) and choose exactly one intent from [RFQ, Complaint, Invoice, Regulation, Fraud Risk, Unknown]. "
+            "Prioritize the meaning and role of keywords in the context, not just their presence.\n\n"
         )
         suffix = "Format: {{ input_format }}\nText: {{ input_text }}\nIntent:"
 
@@ -133,14 +132,13 @@ class ClassifierAgent:
         if len(snippet) > self.max_snippet_chars:
             snippet = snippet[:self.max_snippet_chars] + "..."
 
-        # Check metadata for document_type (if provided)
+        # Check metadata for document_type
         if metadata and metadata.get("extraction", {}).get("document_type") == "Tax Invoice":
             return {"source": "classifier", "format": fmt, "intent": "Invoice"}
 
-        # Semantic keyword scoring
+        # Semantic scoring
         intent_scores = self._score_intents(snippet, fmt)
-        top_intent = max(intent_scores, key=intent_scores.get, default="Unknown")
-        if intent_scores.get("Invoice", 0) >= 2 and fmt == "PDF":  # Require multiple invoice keywords
+        if fmt == "PDF" and intent_scores.get("Invoice", 0) >= 3:  # Require strong invoice evidence
             return {"source": "classifier", "format": fmt, "intent": "Invoice"}
 
         # Fallback to LLM
@@ -168,8 +166,7 @@ class ClassifierAgent:
             if msg.is_multipart():
                 for part in msg.walk():
                     if part.get_content_type() == "text/plain" and part.get_payload(decode=True):
-                        body_bytes = part.get_payload(decode=True)
-                        body += body_bytes.decode("utf-8", errors="ignore")
+                        body += part.get_payload(decode=True).decode("utf-8", errors="ignore")
             else:
                 body = msg.get_payload(decode=True).decode("utf-8", errors="ignore")
             combined = " ".join(headers) + " " + body
@@ -193,10 +190,10 @@ class ClassifierAgent:
                 if i >= 2:
                     break
                 txt = page.extract_text() or ""
-                txt = re.sub(r"---\s*Page\s*\d+\s*---", "", txt)  # Remove artifacts
+                txt = re.sub(r"\s+", " ", txt)  # Normalize whitespace
+                txt = re.sub(r"\|\s*\|", " ", txt)  # Remove table artifacts
                 pages.append(txt)
-            combined = "\n".join(pages)
-            return re.sub(r"\s+", " ", combined).strip()
+            return " ".join(pages).strip()
         except:
             pass
 
@@ -208,14 +205,13 @@ class ClassifierAgent:
             return repr(raw_bytes[:200])
 
     def _score_intents(self, snippet: str, fmt: str) -> dict:
-        """Score intents based on semantic keyword matches."""
         scores = {intent: 0 for intent in self.intent_keywords}
         for intent, patterns in self.intent_patterns.items():
             if intent == "Unknown":
                 continue
-            for pattern in patterns:
+            for pattern, weight in patterns:
                 if pattern.search(snippet):
-                    scores[intent] += 1
+                    scores[intent] += weight
         return scores
 
     def _parse_intent(self, llm_output: str) -> str:

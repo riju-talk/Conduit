@@ -1,5 +1,3 @@
-# agents/json_agent.py
-
 import os
 import json
 import logging
