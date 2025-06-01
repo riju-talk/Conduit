@@ -7,25 +7,6 @@ from datetime import datetime
 import httpx  # lightweight async HTTP client; pip install httpx
 
 class ActionRouter:
-    """
-    ActionRouter:
-      - Takes in an `action_suggestion` dict from an agent: 
-          { "action": str, "target": str }
-      - Maps `target` → a local (simulated) endpoint:
-          - "crm"        → POST /crm
-          - "risk_alert" → POST /risk_alert
-          - "database"   → just log (or write to memory directly)
-      - Sends an HTTP request with minimal retry logic
-      - Returns a standardized outcome dict:
-          {
-            "status": "success" | "error",
-            "target": <str>,
-            "http_status": <int>,
-            "response_body": <dict>,
-            "error": <optional str>
-          }
-    """
-
     def __init__(self, base_url: str = None):
         """
         base_url: The host where /crm and /risk_alert are served, 
@@ -39,13 +20,6 @@ class ActionRouter:
         self.client = httpx.AsyncClient(base_url=self.base_url, timeout=10.0)
 
     async def decide_and_execute(self, suggestion: dict) -> dict:
-        """
-        suggestion: { "action": <str>, "target": <str> }
-        - Maps `target` → a path ("/crm", "/risk_alert", or just log for "database")
-        - Builds a JSON payload: { "action": action, "timestamp": ... }
-        - Calls `_post_with_retries(...)` for HTTP‑based targets
-        - Returns a standardized outcome dict
-        """
         action = suggestion.get("action")
         target = suggestion.get("target")
 
@@ -55,16 +29,11 @@ class ActionRouter:
             "timestamp": datetime.utcnow().isoformat()
         }
 
-        # 1) CRM endpoint
         if target == "crm":
             path = "/crm"
-        # 2) Risk Alert endpoint
         elif target == "risk_alert":
             path = "/risk_alert"
-        # 3) Database / Archive
         elif target == "database":
-            # For “archive,” we don’t need an HTTP call—
-            # we can simply return success and let the orchestrator or agent write to memory/db itself.
             return {
                 "status": "success",
                 "target": "database",
@@ -86,17 +55,6 @@ class ActionRouter:
         return result
 
     async def _post_with_retries(self, path: str, payload: dict, max_retries: int = 2) -> dict:
-        """
-        Attempt an asynchronous POST to `self.base_url + path` up to (max_retries + 1) times.
-        Returns a dict:
-          {
-            "status": "success"|"error",
-            "target": <the path without leading "/">,
-            "http_status": <int or None>,
-            "response_body": <dict or None>,
-            "error": <str or None>
-          }
-        """
         last_error = None
         http_status = None
         response_body = None
@@ -129,7 +87,4 @@ class ActionRouter:
         }
 
     async def shutdown(self):
-        """
-        Call this when your app stops to close the HTTP client cleanly.
-        """
         await self.client.aclose()

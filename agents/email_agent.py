@@ -1,5 +1,3 @@
-# agents/email_agent.py
-
 import os
 import re
 from uuid import uuid4
@@ -7,7 +5,7 @@ from email import message_from_bytes
 from typing import Optional, Dict, Any
 
 from dotenv import load_dotenv
-from langchain.chat_models import ChatOpenAI
+from langchain_groq import ChatGroq
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 
@@ -19,22 +17,19 @@ class EmailAgent:
       - Parses raw email bytes (MIME .eml or plain text)
       - Extracts: sender, subject, body_summary, urgency, tone, thread_id
       - Suggests an action: "escalate" → CRM or "log" → database
-      - Uses a small LLMChain to detect tone (angry/polite/threatening)
+      - Uses a small LLMChain to detect tone (angry/polite/threatening/spam)
     """
 
-    def __init__(self, model_name: str = "gpt-3.5-turbo", temperature: float = 0.0):
-        openai_api_key = os.getenv("OPENAI_API_KEY")
-        if not openai_api_key:
-            raise ValueError("OPENAI_API_KEY not found in environment.")
-
+    def __init__(self, temperature: float = 0.0):
         # Instantiate ChatOpenAI for tone classification
-        self.llm = ChatOpenAI(model_name=model_name, temperature=temperature)
+        model_name = os.getenv("GROQ_MODEL")
+        self.llm = ChatGroq(model_name=model_name, temperature=temperature)
 
         # Tone classification prompt
         tone_prompt = PromptTemplate(
             input_variables=["email_body"],
             template=(
-                "Classify the tone of this email body into one of: [angry, polite, threatening].\n\n"
+                "Classify the tone of this email body into one of: [angry, polite, threatening, spam].\n\n"
                 "Email Body:\n{email_body}\n\n"
                 "Tone:"
             )
@@ -116,10 +111,6 @@ class EmailAgent:
         return "normal"
 
     def _get_tone(self, body: str) -> str:
-        """
-        Uses the LLMChain to classify tone into [angry, polite, threatening].
-        If model fails or is inconclusive, default to "polite".
-        """
         if not body.strip():
             return "polite"
 
@@ -128,7 +119,7 @@ class EmailAgent:
         llm_response = self.tone_chain.run(email_body=truncated).strip().lower()
 
         # Post‑process to ensure one of the three labels
-        for label in ["angry", "polite", "threatening"]:
+        for label in ["angry", "polite", "threatening", "spam"]:
             if label in llm_response:
                 return label
         return "polite"
